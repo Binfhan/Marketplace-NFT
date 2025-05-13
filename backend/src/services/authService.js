@@ -32,14 +32,17 @@ async function generateAndSendOTP(email) {
 
     const expires_at = new Date(Date.now() + 10 * 60 * 1000); // 10 phút sau
 
+    const otpTemplate = require('../emails/otp');
+    const emailContent = otpTemplate(otp, user.full_name || 'Người dùng');
+
+
     await createOTP(user.id, otp, expires_at);
 
     await transporter.sendMail({
         from: process.env.EMAIL_USER,
         to: user.mail,
-        sunject: 'Xác thực email',
-        text: `Mã OTP của bạn là: ${otp}. Nó sẽ hết hạn sau 10 phút.`,
-        html: `<p>Mã OTP của bạn là: <strong>${otp}</strong></p><p>Nó sẽ hết hạn sau 10 phút.</p>`,
+        sunject: 'Mã OTP xác thực tài khoản',
+        text: emailContent,
     });
     return otp;
 }
@@ -61,17 +64,17 @@ async function loginWithEmail(email) {
 //Xác thực OTP
 async function verifyOTP(userId, otp) {
     const otpRecord = await findOTP(userId, otp);
-    if (!otpRecord) {
-        throw new Error('OTP không hợp lệ hoặc đã hết hạn');
-        await updateOTPVerified(otpRecord.id);
-        await updateEmailVerified(userId);
+    if (!otpRecord) throw new Error('OTP không hợp lệ hoặc đã hết hạn');
 
-        const user = await findUserByEmail((await findUserById(userId)).email);
-        const token = jwt.sign({ id: user.id, email: user.email }, process.env.JWT_SECRET, {
+        await updateOTPVerified(otpRecord.id);
+        await updateEmailVerified(userId);      
+
+        const user = await findUserByEmail((await findUserByEmail(user.email)).email);
+        const token = jwt.sign({ id: user.id, role: user.role }, process.env.JWT_SECRET, {
             expiresIn: '1h',
         });
         return { token, user };
-    }
+    
 }
 
 //Đânh nhập bằng ví

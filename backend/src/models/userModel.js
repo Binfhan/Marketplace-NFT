@@ -1,4 +1,4 @@
-const db = require('../config/db');
+const pool = require('../config/db');
 
 // Hàm lấy người dùng theo email
 async function findUserByEmail(email) {
@@ -57,6 +57,31 @@ async function updateWalletVerified(user_id) {
   await pool.query('UPDATE users SET is_wallet_verified = TRUE WHERE id = ?', [user_id]);
 }
 
+// Hàm 2FA
+async function update2FA(user_id, secret_key, backup_codes) {
+  const [result] = await pool.query(
+    `INSERT INTO user_2fa (user_id, secret_key, backup_codes, enabled)
+     VALUES (?, ?, ?, TRUE)
+     ON DUPLICATE KEY UPDATE secret_key = ?, backup_codes = ?, enabled = TRUE`,
+    [user_id, secret_key, backup_codes, secret_key, backup_codes]
+  );
+  return { user_id, secret_key, backup_codes };
+}
+
+// Hàm tạo KYC 
+async function createKYC(user_id, document_type, document_number, front_image_url, back_image_url, selfie_image_url) {
+  const [result] = await pool.query(
+    `INSERT INTO user_kyc (user_id, document_type, document_number, front_image_url, back_image_url, selfie_imamge_url, status)
+    VALUES (?, ?, ?, ?, ?, ?, 'pending')`,
+    [user_id, document_type, document_number, front_image_url, back_image_url, selfie_image_url]
+  );
+  return {
+    id: result.insertId, usser_id, document_type, document__number, front_image_url, back_image_url,
+    selfie_image_url, status: 'pending'
+  };
+}
+
+
 module.exports = {
   findUserByEmail,
   findUserByWalletAddress,
@@ -66,4 +91,6 @@ module.exports = {
   updateOTPVerified,
   updateEmailVerified,
   updateWalletVerified,
+  update2FA,
+  createKYC,
 };
